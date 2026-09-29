@@ -1,1 +1,136 @@
-<!DOCTYPE html><html lang=ru><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Locus Cafe</title><style>html,body{height:100%;margin:0;background:#0b140e;color:#F3EEE6;font-family:-apple-system,sans-serif}body{overscroll-behavior:none}.space{height:700vh}.stage{position:fixed;inset:0;background:#0b140e}#frame{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.brand{position:absolute;top:18px;left:20px;right:20px;display:flex;justify-content:space-between;letter-spacing:.28em;text-transform:uppercase;font-size:11px;color:#E6D09A}.hint{position:absolute;left:20px;right:20px;bottom:40px;text-align:center;letter-spacing:.16em;text-transform:uppercase;font-size:13px}</style></head><body><div class=space></div><div class=stage><img id=frame alt=cafe><div class=brand><span>Locus Cafe</span><span>Tacoma</span></div><div class=hint>Листай вниз — заходишь внутрь</div></div><script src=frames/0.js></script><script>const img=document.getElementById('frame');function tick(){const F=window.FRAMES||[];if(F[0])img.src=F[0];const p=Math.min(1,scrollY/Math.max(1,document.documentElement.scrollHeight-innerHeight));requestAnimationFrame(tick)}requestAnimationFrame(tick)</script></body></html>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Locus Café — Walk In</title>
+  <style>
+    :root { --gold:#E6D09A; --cream:#F3EEE6; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html, body { height:100%; background:#0b140e; color:var(--cream); font-family:-apple-system,BlinkMacSystemFont,sans-serif; }
+    body { overscroll-behavior:none; }
+    .scroll-space { height:700vh; }
+    .stage { position:fixed; inset:0; overflow:hidden; background:#0b140e; }
+    canvas#walk { position:absolute; inset:0; width:100%; height:100%; }
+    .veil { position:absolute; inset:0; pointer-events:none;
+      background: linear-gradient(to bottom, rgba(11,20,14,.42) 0%, transparent 18%, transparent 78%, rgba(11,20,14,.52) 100%); }
+    .brand { position:absolute; top:max(18px,env(safe-area-inset-top)); left:20px; right:20px;
+      display:flex; justify-content:space-between; letter-spacing:.28em; text-transform:uppercase;
+      font-size:11px; color:var(--gold); }
+    .hint, .beat, .endcard { position:absolute; left:20px; right:20px; text-align:center;
+      transition:opacity .45s ease, transform .45s ease; }
+    .hint { bottom:max(36px,env(safe-area-inset-bottom)); font-size:13px; letter-spacing:.18em; text-transform:uppercase; }
+    .hint span { display:block; opacity:.7; margin-top:8px; letter-spacing:.08em; font-size:12px; }
+    .hint.hidden { opacity:0; transform:translateY(8px); pointer-events:none; }
+    .beat { bottom:max(88px, calc(env(safe-area-inset-bottom) + 64px)); font-size:22px;
+      text-shadow:0 8px 30px rgba(0,0,0,.45); opacity:0; transform:translateY(10px); }
+    .beat.on { opacity:1; transform:none; }
+    .endcard { inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+      background:rgba(11,20,14,.28); opacity:0; pointer-events:none; }
+    .endcard.on { opacity:1; }
+    .endcard h1 { font-size:34px; letter-spacing:.16em; font-weight:500; color:var(--gold); font-family:Georgia,serif; }
+    .endcard p { font-size:13px; letter-spacing:.12em; text-transform:uppercase; opacity:.85; }
+    .progress { position:absolute; left:0; right:0; top:0; height:2px; background:rgba(230,208,154,.15); }
+    .progress > i { display:block; height:100%; width:0; background:var(--gold); }
+    .loader { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+      background:#0b140e; letter-spacing:.22em; text-transform:uppercase; font-size:11px; color:var(--gold); }
+    .loader.done { opacity:0; pointer-events:none; transition:opacity .6s ease; }
+  </style>
+</head>
+<body>
+  <div class="scroll-space" aria-hidden="true"></div>
+  <div class="stage">
+    <canvas id="walk"></canvas>
+    <div class="veil"></div>
+    <div class="progress"><i id="bar"></i></div>
+    <div class="brand"><span>Locus Café</span><span>Tacoma</span></div>
+    <div class="hint" id="hint">Листай вниз — заходишь внутрь<span>скролл = шаг вперёд</span></div>
+    <div class="beat" id="beat"></div>
+    <div class="endcard" id="endcard">
+      <h1>LOCUS CAFÉ</h1>
+      <p>Where good coffee and great company meet</p>
+    </div>
+    <div class="loader" id="loader">Opening the door</div>
+  </div>
+  <script src="c00.js"></script>
+  <script src="c01.js"></script>
+  <script src="c02.js"></script>
+  <script src="c03.js"></script>
+  <script src="c04.js"></script>
+  <script src="c05.js"></script>
+  <script>
+    const canvas = document.getElementById("walk");
+    const ctx = canvas.getContext("2d", { alpha:false });
+    const hint = document.getElementById("hint");
+    const beat = document.getElementById("beat");
+    const bar = document.getElementById("bar");
+    const endcard = document.getElementById("endcard");
+    const loader = document.getElementById("loader");
+    const beats = [
+      { at:0.00, text:"Потяни дверь" },
+      { at:0.12, text:"Ты внутри" },
+      { at:0.32, text:"Стойка" },
+      { at:0.52, text:"Зал" },
+      { at:0.72, text:"Стена полароидов" },
+      { at:0.88, text:"Locus Café" }
+    ];
+    const imgs = [];
+    let loaded = 0, target = 0, current = 0, ready = false;
+
+    function size() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(window.innerWidth * dpr);
+      canvas.height = Math.floor(window.innerHeight * dpr);
+    }
+    function labelFor(p) {
+      let t = beats[0].text;
+      for (const b of beats) if (p >= b.at) t = b.text;
+      return t;
+    }
+    function frameIndex(p) {
+      const n = imgs.length;
+      if (n < 2) return 0;
+      return Math.min(n - 1, Math.max(0, Math.round(p * (n - 1))));
+    }
+    function draw() {
+      const im = imgs[frameIndex(current)];
+      if (!im || !im.complete || !im.naturalWidth) return;
+      const cw = canvas.width, ch = canvas.height;
+      const ir = im.naturalWidth / im.naturalHeight;
+      const cr = cw / ch;
+      let dw, dh, dx, dy;
+      if (ir > cr) { dh = ch; dw = ch * ir; dx = (cw - dw) / 2; dy = 0; }
+      else { dw = cw; dh = cw / ir; dx = 0; dy = (ch - dh) / 2; }
+      ctx.fillStyle = "#0b140e";
+      ctx.fillRect(0,0,cw,ch);
+      ctx.drawImage(im, dx, dy, dw, dh);
+    }
+    function tick() {
+      const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+      target = Math.min(1, Math.max(0, window.scrollY / max));
+      current += (target - current) * 0.22;
+      if (ready) draw();
+      bar.style.width = (current * 100) + "%";
+      hint.classList.toggle("hidden", current > 0.04);
+      beat.textContent = labelFor(current);
+      beat.classList.toggle("on", current > 0.03 && current < 0.96);
+      endcard.classList.toggle("on", current > 0.96);
+      requestAnimationFrame(tick);
+    }
+    function arm() {
+      const raw = window.FRAMES || [];
+      raw.forEach((b, i) => {
+        const im = new Image();
+        im.onload = () => { loaded++; if (loaded === raw.length) { ready = true; loader.classList.add("done"); draw(); } };
+        im.src = "data:image/jpeg;base64," + b;
+        imgs[i] = im;
+      });
+    }
+    window.addEventListener("resize", () => { size(); draw(); });
+    size();
+    arm();
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
